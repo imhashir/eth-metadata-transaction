@@ -1,77 +1,70 @@
-/**
- * Require the credentials that you entered in the .env file
- */
-require('dotenv').config()
+const MerkleTree = require('merkletreejs')
+const SHA256 = require('crypto-js/sha256')
+var xlsx = require('excel4node');
+var tx = require('./txController')
+var fs = require('fs');
 
-const Web3 = require('web3')
-const axios = require('axios')
-const EthereumTx = require('ethereumjs-tx')
-const log = require('ololog').configure({ time: true })
-const ansi = require('ansicolor').nice
+function computeMerkleRoot(jsonData, proofDest) {
+    var workbook = new xlsx.Workbook();
+    var ws = workbook.addWorksheet('ProofData');
 
+    const dataHash = jsonData.map(x => SHA256(JSON.stringify(x)))
 
-const testnet = "https://rinkeby.infura.io/v3/66f5470a5e6f41b0b4696e96643d1d31"
+    const tree = new MerkleTree(dataHash, SHA256)
+    const root = tree.getRoot().toString('hex')
 
-const web3 = new Web3( new Web3.providers.HttpProvider(testnet) )
-web3.eth.defaultAccount = process.env.WALLET_ADDRESS
+    for(var i = 0; i < jsonData.length; i++) {
+        var item = jsonData[i]
+        var itemStr = JSON.stringify(item)
+        var leaf = SHA256(itemStr)
 
-const amountToSend = 0.001
+        // Store this following proof in DB as string
+        var proof = JSON.stringify(tree.getProof(leaf))
 
-const getCurrentGasPrices = async () => {
-    let response = await axios.get('https://ethgasstation.info/json/ethgasAPI.json')
-    let prices = {
-      low: response.data.safeLow / 10,
-      medium: response.data.average / 10,
-      high: response.data.fast / 10
+        ws.cell(i + 1, 1).string(itemStr)
+        ws.cell(i+ 1, 2).string(proof)
+        console.log(proof)
     }
 
-    console.log("\r\n")
-    log (`Current ETH Gas Prices (in GWEI):`.cyan)
-    console.log("\r\n")
-    log(`Low: ${prices.low} (transaction completes in < 30 minutes)`.green)
-    log(`Standard: ${prices.medium} (transaction completes in < 5 minutes)`.yellow)
-    log(`Fast: ${prices.high} (transaction completes in < 2 minutes)`.red)
-    console.log("\r\n")
+    workbook.write(proofDest)
 
-    return prices
+    return root
 }
 
-const main = async () => {
-    let myBalanceWei = web3.eth.getBalance(web3.eth.defaultAccount).toNumber()
-    let myBalance = web3.fromWei(myBalanceWei, 'ether')
-
-    log(`Your wallet balance is currently ${myBalance} ETH`.green)
-
-    let nonce = web3.eth.getTransactionCount(web3.eth.defaultAccount)
-    log(`The outgoing transaction count for your wallet address is: ${nonce}`.magenta)
-
-    let gasPrices = await getCurrentGasPrices()
-
-    let details = {
-        "to": process.env.DESTINATION_WALLET_ADDRESS,
-        "value": web3.toHex( web3.toWei(amountToSend, 'ether') ),
-        "gas": 210000,
-        "gasPrice": gasPrices.high * 1000000000, // converts the gwei price to wei
-        "nonce": nonce,
-        "data": "Hashir BAig",
-        "chainId": 4 // EIP 155 chainId - mainnet: 1, rinkeby: 4
-    }
-
-    const transaction = new EthereumTx(details)
-
-    transaction.sign( Buffer.from(process.env.WALLET_PRIVATE_KEY, 'hex') )
-
-    const serializedTransaction = transaction.serialize()
-
-    const transactionId = web3.eth.sendRawTransaction('0x' + serializedTransaction.toString('hex') )
-
-    const url = `https://rinkeby.etherscan.io/tx/${transactionId}`
-    log(url.cyan)
-
-    log(`Note: please allow for 30 seconds before transaction appears on Etherscan`.magenta)
-
-    process.exit()
-
+function publishOnBlockchain(root, size) {
+    tx.makeTransaction(root, false)
 }
 
-main()
+var data = JSON.parse(fs.readFileSync('data.json', 'utf8'));
+
+// const dataHash = data.map(x => SHA256(JSON.stringify(x)))
+
+// const tree = new MerkleTree(dataHash, SHA256)
+// const root = tree.getRoot().toString('hex')
+
+// var wb = new xl.Workbook();
+
+// for(var key in data) {
+//     var item = data[key]
+//     var leaf = SHA256(JSON.stringify(item))
+
+//     // Store this following proof in DB as string
+//     var proof = JSON.stringify(tree.getProof(leaf))
+
+//     // Following line should be replaced by the code that
+//     // fetches proof from DB and then converts it to json array
+//     proofJson = JSON.parse(proof)
+
+//     // Converting fetched proof to appropriate format
+//     for(var key in proofJson) {
+//         proofJson[key].data = Buffer.from(proofJson[key].data)
+//     }
+
+//     console.log(tree.verify(proofJson, leaf, root)) // true
+// }
+
+console.log("Computing Merkle Root...")
+const root = computeMerkleRoot(data, "Data.xlsx")
+
+console.log("Publishing root on Blockchain")
+const txid = publishOnBlockchain(root, data.length)

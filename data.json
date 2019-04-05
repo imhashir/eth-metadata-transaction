@@ -4,6 +4,7 @@
         "Last Name": "Aslam",
         "Batch": 2015,
         "Institution": "FAST",
+        "CGPA": 3.01,
         "Public Key": "0x6e6F07247161E22E1a259196F483cCEC21dfBfF9" 
     },
     { 
@@ -11,6 +12,7 @@
         "Last Name": "Baig",
         "Batch": 2015,
         "Institution": "FAST",
+        "CGPA": 2.90,
         "Public Key": "0x6e6F07247161E22E1a259196F483cCEC21dfBfF9" 
     },
     { 
@@ -18,6 +20,7 @@
         "Last Name": "Hassan",
         "Batch": 2015,
         "Institution": "FAST",
+        "CGPA": 3.56,
         "Public Key": "0x6e6F07247161E22E1a259196F483cCEC21dfBfF9" 
     },
     { 
@@ -25,6 +28,7 @@
         "Last Name": "Shahid",
         "Batch": 2015,
         "Institution": "FAST",
+        "CGPA": 3.00,
         "Public Key": "0x6e6F07247161E22E1a259196F483cCEC21dfBfF9" 
     },
     { 
@@ -32,6 +36,7 @@
         "Last Name": "Aslam",
         "Batch": 2015,
         "Institution": "FAST",
+        "CGPA": 3.41,
         "Public Key": "0x6e6F07247161E22E1a259196F483cCEC21dfBfF9" 
     },
     { 
@@ -39,6 +44,7 @@
         "Last Name": "Baig",
         "Batch": 2015,
         "Institution": "FAST",
+        "CGPA": 2.96,
         "Public Key": "0x6e6F07247161E22E1a259196F483cCEC21dfBfF9" 
     },
     { 

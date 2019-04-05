@@ -3,6 +3,7 @@ const SHA256 = require('crypto-js/sha256')
 var xlsx = require('excel4node');
 var tx = require('./txController')
 var fs = require('fs');
+var Excel = require('exceljs');
 
 function computeMerkleRoot(jsonData, proofDest) {
     var workbook = new xlsx.Workbook();
@@ -23,7 +24,7 @@ function computeMerkleRoot(jsonData, proofDest) {
 
         ws.cell(i + 1, 1).string(itemStr)
         ws.cell(i+ 1, 2).string(proof)
-        console.log(proof)
+        // console.log(proof)
     }
 
     workbook.write(proofDest)
@@ -32,39 +33,46 @@ function computeMerkleRoot(jsonData, proofDest) {
 }
 
 function publishOnBlockchain(root, size) {
-    tx.makeTransaction(root, false)
+    return tx.makeTransaction(root, true)
 }
 
-var data = JSON.parse(fs.readFileSync('data.json', 'utf8'));
+// -----------------------------------------------------------
 
-// const dataHash = data.map(x => SHA256(JSON.stringify(x)))
+function verifyCertificates(root, dataFile) {
+    var data = JSON.parse(fs.readFileSync('data.json', 'utf8'));
+    const dataHash = data.map(x => SHA256(JSON.stringify(x)));
+    const tree = new MerkleTree(dataHash, SHA256)
+    // Verification
+    var workbook = new Excel.Workbook();
+    workbook.xlsx.readFile(dataFile)
+        .then(function() {
+            var worksheet = workbook.getWorksheet(1);
+            for(var i = 1; i <= 10; i++) {
+                var row = worksheet.getRow(i);
+                var cert = row.getCell(1).value;
 
-// const tree = new MerkleTree(dataHash, SHA256)
-// const root = tree.getRoot().toString('hex')
+                jsonProof = JSON.parse(row.getCell(2).value)
+                for(var key in jsonProof) {
+                    jsonProof[key].data = Buffer.from(jsonProof[key].data)
+                }
 
-// var wb = new xl.Workbook();
+                var leaf = SHA256(cert)
+                console.log(tree.verify(jsonProof, leaf, root)) // true
+            }
+        });
+}
 
-// for(var key in data) {
-//     var item = data[key]
-//     var leaf = SHA256(JSON.stringify(item))
+// -------------------------------------------------------------------
 
-//     // Store this following proof in DB as string
-//     var proof = JSON.stringify(tree.getProof(leaf))
+// var data = JSON.parse(fs.readFileSync('data.json', 'utf8'));
+// console.log("Computing Merkle Root...")
+// const root = computeMerkleRoot(data, "Data.xlsx")
+// console.log(root)
 
-//     // Following line should be replaced by the code that
-//     // fetches proof from DB and then converts it to json array
-//     proofJson = JSON.parse(proof)
+// console.log("Publishing root on Blockchain")
+// const txid = publishOnBlockchain(root, data.length)
 
-//     // Converting fetched proof to appropriate format
-//     for(var key in proofJson) {
-//         proofJson[key].data = Buffer.from(proofJson[key].data)
-//     }
-
-//     console.log(tree.verify(proofJson, leaf, root)) // true
-// }
-
-console.log("Computing Merkle Root...")
-const root = computeMerkleRoot(data, "Data.xlsx")
-
-console.log("Publishing root on Blockchain")
-const txid = publishOnBlockchain(root, data.length)
+console.log("Verifying Certificates")
+const root = "e31800b98435c0067ef373fd6b40a07092d2f32373024a02d74441614e219d2d"
+const dataFileName = "Data.xlsx"
+verifyCertificates(root, dataFileName)
